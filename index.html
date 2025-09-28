@@ -78,6 +78,7 @@
             background: linear-gradient(45deg, #90EE90, #98FB98);
             padding: 2px;
             transition: all 0.3s ease;
+            margin-right: 15px;
         }
 
         .file-input-wrapper:hover {
@@ -105,6 +106,26 @@
 
         .file-input-button:hover {
             background: rgba(26, 26, 26, 0.7);
+        }
+
+        .download-xml-btn {
+            background: linear-gradient(45deg, #4A90E2, #5BA3F5);
+            border: none;
+            border-radius: 15px;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .download-xml-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(74, 144, 226, 0.4);
         }
 
         .file-info {
@@ -498,7 +519,6 @@
 
         .collapsible-header h2 {
             margin: 0;
-            color: #90EE90;
         }
 
         .collapsible-header .arrow {
@@ -694,6 +714,9 @@
                             📁 Escolher Arquivo Excel
                         </label>
                     </div>
+                    <a href="Conj_Dados_Bens_Patrionio.xml" download class="download-xml-btn">
+                        📥 Download Conj_Dados_Bens_Patrionio.xml
+                    </a>
                     <div class="file-info" id="fileInfo">
                         <p><strong>Arquivo selecionado:</strong> <span id="fileName"></span></p>
                         <p><strong>Tamanho:</strong> <span id="fileSize"></span></p>
@@ -881,16 +904,69 @@
             content.classList.toggle('expanded');
         }
 
-        // Event Listeners para os cabeçalhos recolhíveis
-        document.getElementById('uploadHeader').addEventListener('click', () => toggleCollapsible('uploadHeader', 'uploadContent'));
-        document.getElementById('mappingHeader').addEventListener('click', () => toggleCollapsible('mappingHeader', 'mappingContent'));
-        document.getElementById('exportHeader').addEventListener('click', () => toggleCollapsible('exportHeader', 'exportContent'));
+        // Event listeners para seções recolhíveis
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('uploadHeader').addEventListener('click', function() {
+                toggleCollapsible('uploadHeader', 'uploadContent');
+            });
+            
+            document.getElementById('mappingHeader').addEventListener('click', function() {
+                toggleCollapsible('mappingHeader', 'mappingContent');
+            });
+            
+            document.getElementById('exportHeader').addEventListener('click', function() {
+                toggleCollapsible('exportHeader', 'exportContent');
+            });
+            
+            // Inicializar com primeira seção expandida
+            document.getElementById('uploadContent').classList.add('expanded');
+        });
 
-        // Inicializar campos modelo
-        function initializeModelColumns() {
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileSize').textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                document.getElementById('fileInfo').style.display = 'block';
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    excelData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
+                    if (excelData.length > 0) {
+                        excelColumns = excelData[0];
+                        displayColumns();
+                        updateProgress(33);
+                        updateSteps(2);
+                        toggleCollapsible('mappingHeader', 'mappingContent');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        function displayColumns() {
+            const excelColumnsDiv = document.getElementById("excelColumns");
             const modelColumnsDiv = document.getElementById("modelColumns");
+            
+            // Limpar conteúdo anterior
+            excelColumnsDiv.innerHTML = "";
             modelColumnsDiv.innerHTML = "";
             
+            // Mostrar colunas do Excel
+            excelColumns.forEach(column => {
+                const div = document.createElement("div");
+                div.className = "column-item";
+                div.textContent = column;
+                div.onclick = () => selectExcelColumn(column);
+                excelColumnsDiv.appendChild(div);
+            });
+            
+            // Mostrar campos modelo
             modelFields.forEach(field => {
                 const div = document.createElement("div");
                 div.className = "column-item";
@@ -900,90 +976,22 @@
                     div.classList.add("required");
                 }
                 
-                // Verificar se já está mapeado
-                if (Object.keys(mappings).includes(field)) {
-                    div.classList.add("mapped");
-                }
-                
                 div.textContent = field;
-                div.onclick = () => selectModelColumn(field, div);
+                div.onclick = () => selectModelColumn(field);
                 modelColumnsDiv.appendChild(div);
             });
         }
 
-        // Manipular upload de arquivo
-        document.getElementById("fileInput").addEventListener("change", function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById("fileName").textContent = file.name;
-                document.getElementById("fileSize").textContent = formatFileSize(file.size);
-                document.getElementById("fileInfo").style.display = "block";
-                
-                readExcelFile(file);
-            }
-        });
-
-        function formatFileSize(bytes) {
-            if (bytes === 0) return "0 Bytes";
-            const k = 1024;
-            const sizes = ["Bytes", "KB", "MB", "GB"];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-        }
-
-        function readExcelFile(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: "array"});
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    
-                    // Converter para JSON
-                    excelData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                    
-                    if (excelData.length > 0) {
-                        excelColumns = excelData[0]; // Primeira linha como cabeçalho
-                        displayExcelColumns();
-                        toggleCollapsible("mappingHeader", "mappingContent"); // Expandir seção de mapeamento
-                        updateProgress(33);
-                        updateSteps(2);
-                    }
-                } catch (error) {
-                    alert("Erro ao ler o arquivo Excel: " + error.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function displayExcelColumns() {
-            const excelColumnsDiv = document.getElementById("excelColumns");
-            excelColumnsDiv.innerHTML = "";
-            
-            excelColumns.forEach((column, index) => {
-                const div = document.createElement("div");
-                div.className = "column-item";
-                // Verificar se a coluna já está mapeada
-                const isMapped = Object.values(mappings).includes(column);
-                if (isMapped) {
-                    div.classList.add("mapped");
-                }
-                div.textContent = column;
-                div.onclick = () => selectExcelColumn(column, div);
-                excelColumnsDiv.appendChild(div);
-            });
-        }
-
-        function selectExcelColumn(column, element) {
-            // Remover seleção anterior
-            document.querySelectorAll("#excelColumns .column-item").forEach(item => {
-                item.classList.remove("selected");
-            });
-            
-            // Adicionar seleção atual
-            element.classList.add("selected");
+        function selectExcelColumn(column) {
+            clearSelections();
             selectedExcelColumn = column;
+            
+            // Destacar coluna selecionada
+            document.querySelectorAll("#excelColumns .column-item").forEach(item => {
+                if (item.textContent === column) {
+                    item.classList.add("selected");
+                }
+            });
             
             // Se já tiver um campo modelo selecionado, criar mapeamento
             if (selectedModelColumn) {
@@ -991,15 +999,15 @@
             }
         }
 
-        function selectModelColumn(field, element) {
-            // Remover seleção anterior
-            document.querySelectorAll("#modelColumns .column-item").forEach(item => {
-                item.classList.remove("selected");
-            });
-            
-            // Adicionar seleção atual
-            element.classList.add("selected");
+        function selectModelColumn(field) {
             selectedModelColumn = field;
+            
+            // Destacar campo selecionado
+            document.querySelectorAll("#modelColumns .column-item").forEach(item => {
+                if (item.textContent === field) {
+                    item.classList.add("selected");
+                }
+            });
             
             // Se já tiver uma coluna Excel selecionada, criar mapeamento
             if (selectedExcelColumn) {
@@ -1418,81 +1426,43 @@
                         await writable.write(encodedContent);
                         await writable.close();
 
-                        exportStatus.innerHTML = `
-                            <p style="color: #90EE90;">✅ Arquivo salvo com sucesso!</p>
-                            <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
-                                ${validRows.length} registros válidos exportados em formato ANSI
-                            </p>
-                        `;
-                    } catch (saveError) {
-                        if (saveError.name === 'AbortError') {
-                            exportStatus.innerHTML = '<p style="color: #ffaa00;">⚠️ Salvamento cancelado pelo usuário.</p>';
+                        exportStatus.innerHTML = '<p style="color: #90EE90;">✅ Arquivo exportado com sucesso!</p>';
+                        updateProgress(100);
+                    } catch (error) {
+                        if (error.name === 'AbortError') {
+                            exportStatus.innerHTML = '<p style="color: #ffaa00;">⚠️ Exportação cancelada pelo usuário.</p>';
                         } else {
-                            throw saveError;
+                            // Fallback para download tradicional
+                            downloadFallback(txtContent);
                         }
                     }
                 } else {
                     // Fallback para navegadores que não suportam File System Access API
-                    // Converter para ANSI manualmente
-                    const ansiContent = txtContent
-                        .replace(/[àáâãä]/g, 'a')
-                        .replace(/[ÀÁÂÃÄ]/g, 'A')
-                        .replace(/[èéêë]/g, 'e')
-                        .replace(/[ÈÉÊË]/g, 'E')
-                        .replace(/[ìíîï]/g, 'i')
-                        .replace(/[ÌÍÎÏ]/g, 'I')
-                        .replace(/[òóôõö]/g, 'o')
-                        .replace(/[ÒÓÔÕÖ]/g, 'O')
-                        .replace(/[ùúûü]/g, 'u')
-                        .replace(/[ÙÚÛÜ]/g, 'U')
-                        .replace(/[ç]/g, 'c')
-                        .replace(/[Ç]/g, 'C')
-                        .replace(/[ñ]/g, 'n')
-                        .replace(/[Ñ]/g, 'N');
-
-                    const blob = new Blob([ansiContent], { type: 'text/plain;charset=windows-1252' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'cad_bens.txt';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-
-                    exportStatus.innerHTML = `
-                        <p style="color: #90EE90;">✅ Arquivo baixado com sucesso!</p>
-                        <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
-                            ${validRows.length} registros válidos exportados em formato ANSI<br>
-                            <small>Nota: Seu navegador não suporta seleção de local de salvamento.</small>
-                        </p>
-                    `;
+                    downloadFallback(txtContent);
                 }
-                
-                updateProgress(100);
-
             } catch (error) {
-                exportStatus.innerHTML = `<p style="color: #ff6b6b;">❌ Erro ao gerar arquivo: ${error.message}</p>`;
+                console.error('Erro na exportação:', error);
+                exportStatus.innerHTML = '<p style="color: #ff6666;">❌ Erro ao exportar arquivo.</p>';
             } finally {
                 exportBtn.disabled = false;
             }
         }
 
-        // Inicializar aplicação
-        initializeModelColumns();
-        
-        // Configurar estado inicial das seções
-        // Primeira seção (upload) expandida
-        document.getElementById('uploadHeader').classList.remove('collapsed');
-        document.getElementById('uploadContent').classList.add('expanded');
-        
-        // Demais seções recolhidas
-        document.getElementById('mappingHeader').classList.add('collapsed');
-        document.getElementById('mappingContent').classList.remove('expanded');
-        document.getElementById('exportHeader').classList.add('collapsed');
-        document.getElementById('exportContent').classList.remove('expanded');
-
+        function downloadFallback(txtContent) {
+            // Método tradicional de download
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cad_bens.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            document.getElementById('exportStatus').innerHTML = '<p style="color: #90EE90;">✅ Download iniciado!</p>';
+            updateProgress(100);
+        }
     </script>
 </body>
 </html>
-
