@@ -1502,7 +1502,33 @@
         document.getElementById('exportHeader').classList.add('collapsed');
         document.getElementById('exportContent').classList.remove('expanded');
 
-    </script>
+        
+        <!-- Seção de Download do Conjunto de Dados -->
+        <div class="glass-card">
+            <div class="header" style="margin-bottom: 20px;">
+                <h2 style="font-size: 1.5rem; color: #90EE90; margin-bottom: 10px;">Conjunto de Dados</h2>
+                <p style="color: rgba(255, 255, 255, 0.8); font-size: 1rem;">
+                    Faça o download do arquivo XML com o conjunto de dados de bens patrimoniais.
+                </p>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="https://raw.githubusercontent.com/iramalho1980/importa_bens/main/Conj_Dados_Bens_Patrionio.xml" 
+                   download="Conj_Dados_Bens_Patrionio.xml" 
+                   class="export-btn" 
+                   style="display: inline-block; text-decoration: none; margin: 10px;">
+                    📥 Download Conjunto de dados
+                </a>
+                
+                <div style="margin-top: 15px; padding: 15px; background: rgba(144, 238, 144, 0.1); border-radius: 10px; border: 1px solid rgba(144, 238, 144, 0.3);">
+                    <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem; margin: 0;">
+                        <strong style="color: #98FB98;">Arquivo:</strong> Conj_Dados_Bens_Patrionio.xml<br>
+                        <strong style="color: #98FB98;">Formato:</strong> XML (Extensible Markup Language)<br>
+                        <strong style="color: #98FB98;">Descrição:</strong> Conjunto de dados estruturados para importação de bens patrimoniais
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
-
